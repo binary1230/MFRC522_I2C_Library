@@ -1333,12 +1333,12 @@ void MFRC522::PICC_DumpMifareClassicSectorToSerial(Uid *uid,			///< Pointer to U
 	//		g[0]	Access bits for block 0 (for sectors 0-31) or blocks 0-4 (for sectors 32-39)
 	// Each group has access bits [C1 C2 C3]. In this code C1 is MSB and C3 is LSB.
 	// The four CX bits are stored together in a nible cx and an inverted nible cx_.
-    uint8_t c1, c2, c3;		// Nibbles
-    uint8_t c1_, c2_, c3_;		// Inverted nibbles
-    bool invertedError;		// True if one of the inverted nibbles did not match
-    uint8_t g[4];				// Access bits for each of the four groups.
-    uint8_t group;				// 0-3 - active group for access bits
-    bool firstInGroup;		// True for the first block dumped in the group
+    //uint8_t c1, c2, c3;		// Nibbles
+    //uint8_t c1_, c2_, c3_;		// Inverted nibbles
+    //bool invertedError;		// True if one of the inverted nibbles did not match
+    //uint8_t g[4];				// Access bits for each of the four groups.
+    //uint8_t group;				// 0-3 - active group for access bits
+    //bool firstInGroup;		// True for the first block dumped in the group
 
 	// Determine position and size of sector.
 	if (sector < 32) { // Sectors 0..31 has 4 blocks each
@@ -1413,28 +1413,28 @@ void MFRC522::PICC_DumpMifareClassicSectorToSerial(Uid *uid,			///< Pointer to U
 //		}
 		// Parse sector trailer data
 		if (isSectorTrailer) {
-			c1  = buffer[7] >> 4;
-			c2  = buffer[8] & 0xF;
-			c3  = buffer[8] >> 4;
-			c1_ = buffer[6] & 0xF;
-			c2_ = buffer[6] >> 4;
-			c3_ = buffer[7] & 0xF;
-			invertedError = (c1 != (~c1_ & 0xF)) || (c2 != (~c2_ & 0xF)) || (c3 != (~c3_ & 0xF));
-			g[0] = ((c1 & 1) << 2) | ((c2 & 1) << 1) | ((c3 & 1) << 0);
-			g[1] = ((c1 & 2) << 1) | ((c2 & 2) << 0) | ((c3 & 2) >> 1);
-			g[2] = ((c1 & 4) << 0) | ((c2 & 4) >> 1) | ((c3 & 4) >> 2);
-			g[3] = ((c1 & 8) >> 1) | ((c2 & 8) >> 2) | ((c3 & 8) >> 3);
+//			c1  = buffer[7] >> 4;
+//			c2  = buffer[8] & 0xF;
+//			c3  = buffer[8] >> 4;
+//			c1_ = buffer[6] & 0xF;
+//			c2_ = buffer[6] >> 4;
+//			c3_ = buffer[7] & 0xF;
+//            invertedError = (c1 != (~c1_ & 0xF)) || (c2 != (~c2_ & 0xF)) || (c3 != (~c3_ & 0xF));
+//            g[0] = ((c1 & 1) << 2) | ((c2 & 1) << 1) | ((c3 & 1) << 0);
+//            g[1] = ((c1 & 2) << 1) | ((c2 & 2) << 0) | ((c3 & 2) >> 1);
+//            g[2] = ((c1 & 4) << 0) | ((c2 & 4) >> 1) | ((c3 & 4) >> 2);
+//            g[3] = ((c1 & 8) >> 1) | ((c2 & 8) >> 2) | ((c3 & 8) >> 3);
 			isSectorTrailer = false;
 		}
 
 		// Which access group is this block in?
 		if (no_of_blocks == 4) {
-			group = blockOffset;
-			firstInGroup = true;
+//			group = blockOffset;
+//            firstInGroup = true;
 		}
 		else {
-			group = blockOffset / 5;
-			firstInGroup = (group == 3) || (group != (blockOffset + 1) / 5);
+//			group = blockOffset / 5;
+//            firstInGroup = (group == 3) || (group != (blockOffset + 1) / 5);
 		}
 
 //		if (firstInGroup) {
