@@ -80,8 +80,6 @@
 
 #include <cstdint>
 
-#include <Wire.h>
-
 // Firmware data for self-test
 // Reference values based on firmware version
 // Hint: if needed, you can remove unused self-test data to save flash memory
@@ -314,7 +312,7 @@ public:
 	} MIFARE_Key;
 
 	// Member variables
-	Uid uid;								// Used by PICC_ReadCardSerial().
+	Uid uid{};								// Used by PICC_ReadCardSerial().
 
 	// Size of the MFRC522 FIFO
     static const uint8_t FIFO_SIZE = 64;		// The FIFO is 64 bytes.
@@ -350,8 +348,8 @@ public:
 	/////////////////////////////////////////////////////////////////////////////////////
 	// Functions for communicating with PICCs
 	/////////////////////////////////////////////////////////////////////////////////////
-    uint8_t PCD_TransceiveData(uint8_t *sendData, uint8_t sendLen, uint8_t *backData, uint8_t *backLen, uint8_t *validBits = NULL, uint8_t rxAlign = 0, bool checkCRC = false);
-    uint8_t PCD_CommunicateWithPICC(uint8_t command, uint8_t waitIRq, uint8_t *sendData, uint8_t sendLen, uint8_t *backData = NULL, uint8_t *backLen = NULL, uint8_t *validBits = NULL, uint8_t rxAlign = 0, bool checkCRC = false);
+    uint8_t PCD_TransceiveData(uint8_t *sendData, uint8_t sendLen, uint8_t *backData, uint8_t *backLen, uint8_t *validBits = nullptr, uint8_t rxAlign = 0, bool checkCRC = false);
+    uint8_t PCD_CommunicateWithPICC(uint8_t command, uint8_t waitIRq, uint8_t *sendData, uint8_t sendLen, uint8_t *backData = nullptr, uint8_t *backLen = nullptr, uint8_t *validBits = nullptr, uint8_t rxAlign = 0, bool checkCRC = false);
     uint8_t PICC_RequestA(uint8_t *bufferATQA, uint8_t *bufferSize);
     uint8_t PICC_WakeupA(uint8_t *bufferATQA, uint8_t *bufferSize);
     uint8_t PICC_REQA_or_WUPA(uint8_t command, uint8_t *bufferATQA, uint8_t *bufferSize);

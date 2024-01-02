@@ -6,10 +6,49 @@
 * Author: arozcan @ https://github.com/arozcan/MFRC522-I2C-Library
 */
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <cstring>
+
+#include "driver/i2c.h"
+
 #include <MFRC522_I2C.h>
 
-//#include <HardwareSerial.h>
-#include <Wire.h>
+#include "esp_log.h"
+#include <string>
+#include <utility>
+
+#define TAG "mfrc" // Replace with your tag
+
+class FakeSerial {
+    // TODO: newline treatment is not right in here.  this will add extra newlines/etc.
+    public:
+    explicit FakeSerial(std::string Tag) : tag(std::move(Tag)) {}
+
+    void print(const std::string& msg) {
+        ESP_LOGI(tag.c_str(), "%s", msg.c_str()); // Print without newline
+    }
+
+    void println(const std::string& msg) {
+        ESP_LOGI(tag.c_str(), "%s\n", msg.c_str()); // Print with newline
+    }
+
+    void print(int i) {
+        ESP_LOGI(tag.c_str(), "%d", i);
+    }
+
+    void println(int i) {
+        ESP_LOGI(tag.c_str(), "%d\n", i);
+    }
+
+private:
+    std::string tag;
+};
+FakeSerial Serial(TAG);
+
+// ABSOLUTELY REQUIRED TO IMPLEMENT
+// (I only commented this out because I do this elsewhere in my own app. YOU NEED TO DO IT THOUGH)
+#define RESET_VIA_GPIO 0
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Functions for setting up the Arduino
@@ -24,6 +63,7 @@ MFRC522::MFRC522(	uint8_t chipAddress,
 				) {
 	_chipAddress = chipAddress;
 	_resetPowerDownPin = resetPowerDownPin;
+    uid = {};
 } // End constructor
 
 
@@ -35,83 +75,136 @@ MFRC522::MFRC522(	uint8_t chipAddress,
  * Writes a byte to the specified register in the MFRC522 chip.
  * The interface is described in the datasheet section 8.1.2.
  */
+//NOLINTNEXTLINE(*-make-member-function-const)
 void MFRC522::PCD_WriteRegister(	uint8_t reg,		///< The register to write to. One of the PCD_Register enums.
                                     uint8_t value		///< The value to write.
 								) {
-	Wire.beginTransmission(_chipAddress);
-	Wire.write(reg);
-	Wire.write(value);
-	Wire.endTransmission();
+//	Wire.beginTransmission(_chipAddress);
+//	Wire.write(reg);
+//	Wire.write(value);
+//	Wire.endTransmission();
+
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (_chipAddress << 1) | I2C_MASTER_WRITE, true);
+    i2c_master_write_byte(cmd, reg, true);
+    i2c_master_write_byte(cmd, value, true);
+    i2c_master_stop(cmd);
+    esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
+    i2c_cmd_link_delete(cmd);
+    // TODO: handle errors
 } // End PCD_WriteRegister()
 
 /**
  * Writes a number of bytes to the specified register in the MFRC522 chip.
  * The interface is described in the datasheet section 8.1.2.
  */
+//NOLINTNEXTLINE(*-make-member-function-const)
 void MFRC522::PCD_WriteRegister(	uint8_t reg,		///< The register to write to. One of the PCD_Register enums.
                                     uint8_t count,		///< The number of bytes to write to the register
                                     uint8_t *values	///< The values to write. Byte array.
 								) {
-	Wire.beginTransmission(_chipAddress);
-	Wire.write(reg);
-    for (uint8_t index = 0; index < count; index++) {
-		Wire.write(values[index]);
-	}
-	Wire.endTransmission();
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (_chipAddress << 1) | I2C_MASTER_WRITE, true);
+    i2c_master_write_byte(cmd, reg, true);
+    i2c_master_write(cmd, values, count, true);
+    i2c_master_stop(cmd);
+    esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
+    i2c_cmd_link_delete(cmd);
+    // TODO: handle errors
 } // End PCD_WriteRegister()
 
 /**
  * Reads a byte from the specified register in the MFRC522 chip.
  * The interface is described in the datasheet section 8.1.2.
  */
-uint8_t MFRC522::PCD_ReadRegister(	uint8_t reg	///< The register to read from. One of the PCD_Register enums.
+//NOLINTNEXTLINE(*-make-member-function-const)
+uint8_t MFRC522::PCD_ReadRegister(uint8_t reg	///< The register to read from. One of the PCD_Register enums.
 								) {
-    uint8_t value;
-	//digitalWrite(_chipSelectPin, LOW);			// Select slave
-	Wire.beginTransmission(_chipAddress);
-	Wire.write(reg);
-	Wire.endTransmission();
+    // TODO: handle errors
 
-	Wire.requestFrom(_chipAddress, 1);
-	value = Wire.read();
-	return value;
+    uint8_t value = 0; // Variable to store the read value
+
+    // Creating I2C command link
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create(); // warning: malloc
+    i2c_master_start(cmd);
+
+    // Writing the register address we want to read from
+    i2c_master_write_byte(cmd, (_chipAddress << 1) | I2C_MASTER_WRITE, true);
+    i2c_master_write_byte(cmd, reg, true);
+    i2c_master_stop(cmd);
+    i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS); // Sending the command
+    i2c_cmd_link_delete(cmd); // Deleting the command link
+
+    // Creating a new command link for reading
+    cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+
+    // Setting up and sending the device address for reading
+    i2c_master_write_byte(cmd, (_chipAddress << 1) | I2C_MASTER_READ, true);
+
+    // Reading the byte from the specified register
+    i2c_master_read_byte(cmd, &value, I2C_MASTER_NACK); // NACK for the last byte
+    i2c_master_stop(cmd);
+    i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS); // Sending the command
+
+    // ALWAYS call this at the end
+    i2c_cmd_link_delete(cmd);
+
+    return value;
 } // End PCD_ReadRegister()
 
 /**
  * Reads a number of bytes from the specified register in the MFRC522 chip.
  * The interface is described in the datasheet section 8.1.2.
  */
+//NOLINTNEXTLINE(*-make-member-function-const)
 void MFRC522::PCD_ReadRegister(	uint8_t reg,		///< The register to read from. One of the PCD_Register enums.
                                 uint8_t count,		///< The number of bytes to read
                                 uint8_t *values,	///< Byte array to store the values in.
                                 uint8_t rxAlign	///< Only bit positions rxAlign..7 in values[0] are updated.
 								) {
-	if (count == 0) {
-		return;
-	}
-    uint8_t address = reg;
-    uint8_t index = 0;							// Index in values array.
-	Wire.beginTransmission(_chipAddress);
-	Wire.write(address);
-	Wire.endTransmission();
-	Wire.requestFrom(_chipAddress, count);
-	while (Wire.available()) {
-		if (index == 0 && rxAlign) {		// Only update bit positions rxAlign..7 in values[0]
-			// Create bit mask for bit positions rxAlign..7
-            uint8_t mask = 0;
-            for (uint8_t i = rxAlign; i <= 7; i++) {
-				mask |= (1 << i);
-			}
-			// Read value and tell that we want to read the same address again.
-            uint8_t value = Wire.read();
-			// Apply mask to both current value of values[0] and the new data in value.
-			values[0] = (values[index] & ~mask) | (value & mask);
-		}
-		else { // Normal case
-			values[index] = Wire.read();
-		}
-		index++;
-	}
+    if (count == 0) {
+        return;
+    }
+
+    // Address translation for reading
+    uint8_t address = (_chipAddress << 1) | I2C_MASTER_WRITE; // for setting the register pointer
+
+    // Start the I2C write-read transaction
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+
+    // Send the device address and write bit
+    i2c_master_write_byte(cmd, address, true);
+    // Send the register address
+    i2c_master_write_byte(cmd, reg, true);
+    i2c_master_stop(cmd);
+    i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS); // Execute the commands
+    i2c_cmd_link_delete(cmd); // Clean up
+
+    // Now read from the register
+    address = (_chipAddress << 1) | I2C_MASTER_READ; // Switch to read mode
+    cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, address, true);
+
+    // Read the required number of bytes
+    if(count > 1) {
+        i2c_master_read(cmd, values, count - 1, I2C_MASTER_ACK); // ACK all but the last byte
+    }
+    i2c_master_read_byte(cmd, values + count - 1, I2C_MASTER_NACK); // NACK the last byte
+
+    i2c_master_stop(cmd);
+    i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS); // Execute the commands
+    i2c_cmd_link_delete(cmd); // Clean up
+
+    // If rxAlign is used, adjust the first byte
+    if (rxAlign != 0) {
+        uint8_t mask = ((1 << (rxAlign + 1)) - 1) << (7 - rxAlign);
+        values[0] = (values[0] & ~mask) | (values[0] & mask);
+    }
 } // End PCD_ReadRegister()
 
 /**
@@ -184,15 +277,23 @@ void MFRC522::PCD_Init() {
 	// Set the chipSelectPin as digital output, do not select the slave yet
 
 	// Set the resetPowerDownPin as digital output, do not reset or power down.
+    // #if RESET_VIA_GPIO==1
+    bool sw_reset_needed = true;
+
+    #if RESET_VIA_GPIO == 1
 	pinMode(_resetPowerDownPin, OUTPUT);
-
-
-	if (digitalRead(_resetPowerDownPin) == LOW) {	//The MFRC522 chip is in power down mode.
+	if (digitalRead(_resetPowerDownPin) == LOW) {
+        // TODO: finish implementing for ESP-IDF
+        //The MFRC522 chip is in power down mode.
 		digitalWrite(_resetPowerDownPin, HIGH);		// Exit power down mode. This triggers a hard reset.
 		// Section 8.8.2 in the datasheet says the oscillator start-up time is the start up time of the crystal + 37,74�s. Let us be generous: 50ms.
 		delay(50);
+        sw_reset_needed = false;
 	}
-	else { // Perform a soft reset
+    #endif
+
+    // Perform a soft reset
+    if (sw_reset_needed) {
 		PCD_Reset();
 	}
 
@@ -217,7 +318,7 @@ void MFRC522::PCD_Reset() {
 	// The datasheet does not mention how long the SoftRest command takes to complete.
 	// But the MFRC522 might have been in soft power-down mode (triggered by bit 4 of CommandReg)
 	// Section 8.8.2 in the datasheet says the oscillator start-up time is the start up time of the crystal + 37,74�s. Let us be generous: 50ms.
-	delay(50);
+	vTaskDelay(50);
 	// Wait for the PowerDown bit in CommandReg to be cleared
 	while (PCD_ReadRegister(CommandReg) & (1<<4)) {
 		// PCD still restarting - unlikely after waiting 50ms, but better safe than sorry.
@@ -501,7 +602,7 @@ uint8_t MFRC522::PICC_REQA_or_WUPA(	uint8_t command, 		///< The command to send 
     uint8_t validBits;
     uint8_t status;
 
-	if (bufferATQA == NULL || *bufferSize < 2) {	// The ATQA response is 2 bytes long.
+	if (bufferATQA == nullptr || *bufferSize < 2) {	// The ATQA response is 2 bytes long.
 		return STATUS_NO_ROOM;
 	}
 	PCD_ClearRegisterBitMask(CollReg, 0x80);		// ValuesAfterColl=1 => Bits received after collision are cleared.
@@ -766,7 +867,7 @@ uint8_t MFRC522::PICC_HaltA() {
 	//		If the PICC responds with any modulation during a period of 1 ms after the end of the frame containing the
 	//		HLTA command, this response shall be interpreted as 'not acknowledge'.
 	// We interpret that this way: Only STATUS_TIMEOUT is an success.
-	result = PCD_TransceiveData(buffer, sizeof(buffer), NULL, 0);
+	result = PCD_TransceiveData(buffer, sizeof(buffer), nullptr, 0);
 	if (result == STATUS_TIMEOUT) {
 		return STATUS_OK;
 	}
@@ -847,7 +948,7 @@ uint8_t MFRC522::MIFARE_Read(	uint8_t blockAddr, 	///< MIFARE Classic: The block
     uint8_t result;
 
 	// Sanity check
-	if (buffer == NULL || *bufferSize < 18) {
+	if (buffer == nullptr || *bufferSize < 18) {
 		return STATUS_NO_ROOM;
 	}
 
@@ -861,7 +962,7 @@ uint8_t MFRC522::MIFARE_Read(	uint8_t blockAddr, 	///< MIFARE Classic: The block
 	}
 
 	// Transmit the buffer and receive the response, validate CRC_A.
-	return PCD_TransceiveData(buffer, 4, buffer, bufferSize, NULL, 0, true);
+	return PCD_TransceiveData(buffer, 4, buffer, bufferSize, nullptr, 0, true);
 } // End MIFARE_Read()
 
 /**
@@ -882,7 +983,7 @@ uint8_t MFRC522::MIFARE_Write(	uint8_t blockAddr, ///< MIFARE Classic: The block
     uint8_t result;
 
 	// Sanity check
-	if (buffer == NULL || bufferSize < 16) {
+	if (buffer == nullptr || bufferSize < 16) {
 		return STATUS_INVALID;
 	}
 
@@ -917,7 +1018,7 @@ uint8_t MFRC522::MIFARE_Ultralight_Write(	uint8_t page, 		///< The page (2-15) t
     uint8_t result;
 
 	// Sanity check
-	if (buffer == NULL || bufferSize < 4) {
+	if (buffer == nullptr || bufferSize < 4) {
 		return STATUS_INVALID;
 	}
 

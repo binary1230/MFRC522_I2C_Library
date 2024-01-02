@@ -13,7 +13,8 @@ idf_component_register(
         ${headers}
         ${sources}
     REQUIRES
-        arduino-esp32
+        driver
+#        arduino-esp32
 )
 
-target_compile_options(${COMPONENT_TARGET} PRIVATE -Wno-unused-but-set-variable)
+# target_compile_options(${COMPONENT_TARGET} PRIVATE -Wno-unused-but-set-variable)

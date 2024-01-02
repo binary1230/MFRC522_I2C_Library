@@ -1,3 +1,9 @@
+# modification note
+Dom took the version for esp-arduino and cut the arduino stuff out, converted stuff to ESP-IDF native
+Use at your own risk. needs more error handling etc
+
+# ORIGINAL DOCS:
+
 # MFRC522 i2c 
 ### Code is compatible to Arduino and ESP8266 (NodeMCU)
 
