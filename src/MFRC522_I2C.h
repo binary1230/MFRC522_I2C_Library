@@ -382,6 +382,9 @@ public:
 	// old function used too much memory, now name moved to flash; if you need char, copy from flash to memory
 	//const char *PICC_GetTypeName(byte type);
     const char *PICC_GetTypeName(uint8_t type);
+
+	// Support functions for debuging
+	void PCD_DumpVersionToSerial();
 	void PICC_DumpToSerial(Uid *uid);
     void PICC_DumpMifareClassicToSerial(Uid *uid, uint8_t piccType, MIFARE_Key *key);
     void PICC_DumpMifareClassicSectorToSerial(Uid *uid, MIFARE_Key *key, uint8_t sector);
@@ -398,7 +401,7 @@ public:
 	bool PICC_ReadCardSerial();
 
 private:
-    uint8_t _chipAddress;
+    uint16_t _chipAddress;
     uint8_t _resetPowerDownPin;	// Arduino pin connected to MFRC522's reset and power down input (Pin 6, NRSTPD, active low)
     uint8_t MIFARE_TwoStepHelper(uint8_t command, uint8_t blockAddr, long data);
 };

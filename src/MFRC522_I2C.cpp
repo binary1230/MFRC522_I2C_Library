@@ -71,7 +71,7 @@ FakeSerial Serial(TAG);
 MFRC522::MFRC522(	uint8_t chipAddress,
                     int8_t resetPowerDownPin	///< Arduino pin connected to MFRC522's reset and power down input (Pin 6, NRSTPD, active low)
 				) {
-	_chipAddress = chipAddress;
+	_chipAddress = (uint8_t) chipAddress;
 	_resetPowerDownPin = resetPowerDownPin;
     uid = {};
 } // End constructor
@@ -89,11 +89,6 @@ MFRC522::MFRC522(	uint8_t chipAddress,
 void MFRC522::PCD_WriteRegister(	uint8_t reg,		///< The register to write to. One of the PCD_Register enums.
                                     uint8_t value		///< The value to write.
 								) {
-//	Wire.beginTransmission(_chipAddress);
-//	Wire.write(reg);
-//	Wire.write(value);
-//	Wire.endTransmission();
-
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, (_chipAddress << 1) | I2C_MASTER_WRITE, true);
@@ -114,6 +109,10 @@ void MFRC522::PCD_WriteRegister(	uint8_t reg,		///< The register to write to. On
                                     uint8_t count,		///< The number of bytes to write to the register
                                     uint8_t *values	///< The values to write. Byte array.
 								) {
+    if (count == 0) {
+        return;
+    }
+
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, (_chipAddress << 1) | I2C_MASTER_WRITE, true);
@@ -284,10 +283,7 @@ uint8_t MFRC522::PCD_CalculateCRC(	uint8_t *data,		///< In: Pointer to the data 
  * Initializes the MFRC522 chip.
  */
 void MFRC522::PCD_Init() {
-	// Set the chipSelectPin as digital output, do not select the slave yet
-
 	// Set the resetPowerDownPin as digital output, do not reset or power down.
-    // #if RESET_VIA_GPIO==1
     bool sw_reset_needed = true;
 
     #if RESET_VIA_GPIO == 1
@@ -298,7 +294,7 @@ void MFRC522::PCD_Init() {
             //The MFRC522 chip is in power down mode.
             digitalWrite(_resetPowerDownPin, HIGH);		// Exit power down mode. This triggers a hard reset.
             // Section 8.8.2 in the datasheet says the oscillator start-up time is the start up time of the crystal + 37,74�s. Let us be generous: 50ms.
-            delay(50);
+            delay(100);
             sw_reset_needed = false;
         }
     }
@@ -329,10 +325,11 @@ void MFRC522::PCD_Reset() {
 	PCD_WriteRegister(CommandReg, PCD_SoftReset);	// Issue the SoftReset command.
 	// The datasheet does not mention how long the SoftRest command takes to complete.
 	// But the MFRC522 might have been in soft power-down mode (triggered by bit 4 of CommandReg)
-	// Section 8.8.2 in the datasheet says the oscillator start-up time is the start up time of the crystal + 37,74�s. Let us be generous: 50ms.
+	// Section 8.8.2 in the datasheet says the oscillator start-up time is the start up time of the crystal + 37.74ms. Let us be generous: 50ms.
 	vTaskDelay(50);
 	// Wait for the PowerDown bit in CommandReg to be cleared
 	while (PCD_ReadRegister(CommandReg) & (1<<4)) {
+		Serial.println("PCD Still restarting after SoftReset");
 		// PCD still restarting - unlikely after waiting 50ms, but better safe than sorry.
 	}
 } // End PCD_Reset()
@@ -920,8 +917,8 @@ uint8_t MFRC522::PCD_Authenticate(uint8_t command,		///< PICC_CMD_MF_AUTH_KEY_A 
     for (uint8_t i = 0; i < MF_KEY_SIZE; i++) {	// 6 key bytes
 		sendData[2+i] = key->keyByte[i];
 	}
-    for (uint8_t i = 0; i < 4; i++) {				// The first 4 bytes of the UID
-		sendData[8+i] = uid->uidByte[i];
+	for (uint8_t i = 0; i < 4; i++) {				// The last 4 bytes of the UID
+		sendData[8+i] = uid->uidByte[i+uid->size-4];
 	}
 
 	// Start the authentication.
@@ -1325,6 +1322,29 @@ const char *MFRC522::PICC_GetTypeName(uint8_t piccType	///< One of the PICC_Type
         default:						return "Unknown type";							break;
 	}
 } // End PICC_GetTypeName()
+
+/**
+ * Dumps debug info about the connected PCD to Serial.
+ * Shows all known firmware versions
+ */
+void MFRC522::PCD_DumpVersionToSerial() {
+	// Get the MFRC522 firmware version
+	uint8_t v = PCD_ReadRegister(VersionReg);
+	Serial.print(F("Firmware Version: 0x"));
+	Serial.print(v, HEX);
+	// Lookup which version
+	switch(v) {
+		case 0x88: Serial.println(F(" = (clone)"));  break;
+		case 0x90: Serial.println(F(" = v0.0"));     break;
+		case 0x91: Serial.println(F(" = v1.0"));     break;
+		case 0x92: Serial.println(F(" = v2.0"));     break;
+		case 0x12: Serial.println(F(" = counterfeit chip"));     break;
+		default:   Serial.println(F(" = (unknown)"));
+	}
+	// When 0x00 or 0xFF is returned, communication probably failed
+	if ((v == 0x00) || (v == 0xFF))
+		Serial.println(F("WARNING: Communication failure, is the MFRC522 properly connected?"));
+} // End PCD_DumpVersionToSerial()
 
 /**
  * Dumps debug info about the selected PICC to Serial.
