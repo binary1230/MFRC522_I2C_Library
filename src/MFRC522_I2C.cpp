@@ -25,7 +25,7 @@
 // ----------------------------------------
 // BEGIN HACKY FAKE ARDUINO API
 // ----------------------------------------
-#define F(str)     // NOP
+#define F(str) (str)    // NOP
 #define DEC 01
 #define HEX 02
 
