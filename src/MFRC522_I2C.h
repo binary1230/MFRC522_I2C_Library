@@ -385,6 +385,7 @@ public:
 
 	// Support functions for debuging
 	void PCD_DumpVersionToSerial();
+    uint8_t PCD_GetVersion();
 	void PICC_DumpToSerial(Uid *uid);
     void PICC_DumpMifareClassicToSerial(Uid *uid, uint8_t piccType, MIFARE_Key *key);
     void PICC_DumpMifareClassicSectorToSerial(Uid *uid, MIFARE_Key *key, uint8_t sector);

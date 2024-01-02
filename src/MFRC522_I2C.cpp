@@ -102,7 +102,7 @@ void MFRC522::PCD_WriteRegister(	uint8_t reg,		///< The register to write to. On
     i2c_master_write_byte(cmd, reg, true);
     i2c_master_write_byte(cmd, value, true);
     i2c_master_stop(cmd);
-    esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
+    /*esp_err_t ret = */ i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
     i2c_cmd_link_delete(cmd);
     // TODO: handle errors
 } // End PCD_WriteRegister()
@@ -126,7 +126,7 @@ void MFRC522::PCD_WriteRegister(	uint8_t reg,		///< The register to write to. On
     i2c_master_write_byte(cmd, reg, true);
     i2c_master_write(cmd, values, count, true);
     i2c_master_stop(cmd);
-    esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
+    i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS); // TODO: check this for error. TODO: allow lowering wait time here
     i2c_cmd_link_delete(cmd);
     // TODO: handle errors
 } // End PCD_WriteRegister()
@@ -138,7 +138,7 @@ void MFRC522::PCD_WriteRegister(	uint8_t reg,		///< The register to write to. On
 //NOLINTNEXTLINE(*-make-member-function-const)
 uint8_t MFRC522::PCD_ReadRegister(uint8_t reg	///< The register to read from. One of the PCD_Register enums.
 								) {
-    // TODO: handle errors
+    // TODO: [way] better error handling
 
     uint8_t value = 0; // Variable to store the read value
 
@@ -150,8 +150,12 @@ uint8_t MFRC522::PCD_ReadRegister(uint8_t reg	///< The register to read from. On
     i2c_master_write_byte(cmd, (_chipAddress << 1) | I2C_MASTER_WRITE, true);
     i2c_master_write_byte(cmd, reg, true);
     i2c_master_stop(cmd);
-    i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS); // Sending the command
+    esp_err_t err = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS); // Sending the command
     i2c_cmd_link_delete(cmd); // Deleting the command link
+    if (err != ESP_OK)
+        return 0;
+
+    // ----
 
     // Creating a new command link for reading
     cmd = i2c_cmd_link_create();
@@ -163,10 +167,10 @@ uint8_t MFRC522::PCD_ReadRegister(uint8_t reg	///< The register to read from. On
     // Reading the byte from the specified register
     i2c_master_read_byte(cmd, &value, I2C_MASTER_NACK); // NACK for the last byte
     i2c_master_stop(cmd);
-    i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS); // Sending the command
-
-    // ALWAYS call this at the end
+    err = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS); // Sending the command
     i2c_cmd_link_delete(cmd);
+    if (err != ESP_OK)
+        return 0;
 
     return value;
 } // End PCD_ReadRegister()
@@ -185,6 +189,8 @@ void MFRC522::PCD_ReadRegister(	uint8_t reg,		///< The register to read from. On
         return;
     }
 
+    *values = 0;
+
     // Address translation for reading
     uint8_t address = (_chipAddress << 1) | I2C_MASTER_WRITE; // for setting the register pointer
 
@@ -197,8 +203,10 @@ void MFRC522::PCD_ReadRegister(	uint8_t reg,		///< The register to read from. On
     // Send the register address
     i2c_master_write_byte(cmd, reg, true);
     i2c_master_stop(cmd);
-    i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS); // Execute the commands
+    auto err = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS); // Execute the commands
     i2c_cmd_link_delete(cmd); // Clean up
+    if (err != ESP_OK)
+        return;
 
     // Now read from the register
     address = (_chipAddress << 1) | I2C_MASTER_READ; // Switch to read mode
@@ -213,8 +221,10 @@ void MFRC522::PCD_ReadRegister(	uint8_t reg,		///< The register to read from. On
     i2c_master_read_byte(cmd, values + count - 1, I2C_MASTER_NACK); // NACK the last byte
 
     i2c_master_stop(cmd);
-    i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS); // Execute the commands
+    err = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS); // Execute the commands
     i2c_cmd_link_delete(cmd); // Clean up
+    if (err != ESP_OK)
+        return;
 
     // If rxAlign is used, adjust the first byte
     if (rxAlign != 0) {
@@ -1340,8 +1350,8 @@ const char *MFRC522::PICC_GetTypeName(uint8_t piccType	///< One of the PICC_Type
  */
 void MFRC522::PCD_DumpVersionToSerial() {
 	// Get the MFRC522 firmware version
-	uint8_t v = PCD_ReadRegister(VersionReg);
-	Serial.print(F("MFRC522 Firmware Version Detected: 0x"));
+    uint8_t v = PCD_GetVersion();
+    Serial.print(F("MFRC522 Firmware Version Detected: 0x"));
 	Serial.print(v, HEX);
 	// Lookup which version
 	switch(v) {
@@ -1355,7 +1365,13 @@ void MFRC522::PCD_DumpVersionToSerial() {
 	// When 0x00 or 0xFF is returned, communication probably failed
 	if ((v == 0x00) || (v == 0xFF))
 		Serial.println(F("WARNING: Communication failure, is the MFRC522 properly connected?"));
-} // End PCD_DumpVersionToSerial()
+}
+
+uint8_t MFRC522::PCD_GetVersion() {
+    return PCD_ReadRegister(VersionReg);
+}
+
+// End PCD_DumpVersionToSerial()
 
 /**
  * Dumps debug info about the selected PICC to Serial.
