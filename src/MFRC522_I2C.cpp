@@ -1407,7 +1407,7 @@ void MFRC522::PICC_DumpToSerial(Uid *uid	///< Pointer to Uid struct returned fro
 			break; // No memory dump here
 	}
 
-//	Serial.println();
+    Serial.println();
 	PICC_HaltA(); // Already done if it was a MIFARE Classic PICC.
 } // End PICC_DumpToSerial()
 
@@ -1442,7 +1442,7 @@ void MFRC522::PICC_DumpMifareClassicToSerial(	Uid *uid,		///< Pointer to Uid str
 
 	// Dump sectors, highest address first.
 	if (no_of_sectors) {
-//        Serial.println("Sector Block   0  1  2  3   4  5  6  7   8  9 10 11  12 13 14 15  AccessBits");
+        Serial.println("Sector Block   0  1  2  3   4  5  6  7   8  9 10 11  12 13 14 15  AccessBits");
 		for (int8_t i = no_of_sectors - 1; i >= 0; i--) {
 			PICC_DumpMifareClassicSectorToSerial(uid, key, i);
 		}
@@ -1473,12 +1473,12 @@ void MFRC522::PICC_DumpMifareClassicSectorToSerial(Uid *uid,			///< Pointer to U
 	//		g[0]	Access bits for block 0 (for sectors 0-31) or blocks 0-4 (for sectors 32-39)
 	// Each group has access bits [C1 C2 C3]. In this code C1 is MSB and C3 is LSB.
 	// The four CX bits are stored together in a nible cx and an inverted nible cx_.
-    //uint8_t c1, c2, c3;		// Nibbles
-    //uint8_t c1_, c2_, c3_;		// Inverted nibbles
-    //bool invertedError;		// True if one of the inverted nibbles did not match
-    //uint8_t g[4];				// Access bits for each of the four groups.
-    //uint8_t group;				// 0-3 - active group for access bits
-    //bool firstInGroup;		// True for the first block dumped in the group
+    uint8_t c1, c2, c3;		// Nibbles
+    uint8_t c1_, c2_, c3_;		// Inverted nibbles
+    bool invertedError = false;		// True if one of the inverted nibbles did not match
+    uint8_t g[4];				// Access bits for each of the four groups.
+    uint8_t group;				// 0-3 - active group for access bits
+    bool firstInGroup;		// True for the first block dumped in the group
 
 	// Determine position and size of sector.
 	if (sector < 32) { // Sectors 0..31 has 4 blocks each
@@ -1501,34 +1501,34 @@ void MFRC522::PICC_DumpMifareClassicSectorToSerial(Uid *uid,			///< Pointer to U
 	for (int8_t blockOffset = no_of_blocks - 1; blockOffset >= 0; blockOffset--) {
 		blockAddr = firstBlock + blockOffset;
 		// Sector number - only on first line
-//		if (isSectorTrailer) {
-//			if(sector < 10)
-//                Serial.print("   "); // Pad with spaces
-//			else
-//                Serial.print("  "); // Pad with spaces
-//			Serial.print(sector);
-//            Serial.print("   ");
-//		}
-//		else {
-//            Serial.print("       ");
-//		}
-		// Block number
-//		if(blockAddr < 10)
-//            Serial.print("   "); // Pad with spaces
-//		else {
-//			if(blockAddr < 100)
-//                Serial.print("  "); // Pad with spaces
-//			else
-//                Serial.print(" "); // Pad with spaces
-//		}
-//		Serial.print(blockAddr);
-//        Serial.print("  ");
+		if (isSectorTrailer) {
+			if(sector < 10)
+                Serial.print("   "); // Pad with spaces
+			else
+                Serial.print("  "); // Pad with spaces
+			Serial.print(sector);
+            Serial.print("   ");
+		}
+		else {
+            Serial.print("       ");
+		}
+        // Block number
+		if(blockAddr < 10)
+            Serial.print("   "); // Pad with spaces
+		else {
+			if(blockAddr < 100)
+                Serial.print("  "); // Pad with spaces
+			else
+                Serial.print(" "); // Pad with spaces
+		}
+		Serial.print(blockAddr);
+        Serial.print("  ");
 		// Establish encrypted communications before reading the first block
 		if (isSectorTrailer) {
 			status = PCD_Authenticate(PICC_CMD_MF_AUTH_KEY_A, firstBlock, key, uid);
 			if (status != STATUS_OK) {
-//                Serial.print("PCD_Authenticate() failed: ");
-//				Serial.println(GetStatusCodeName(status));
+                Serial.print("PCD_Authenticate() failed: ");
+				Serial.println(GetStatusCodeName(status));
 				return;
 			}
 		}
@@ -1536,65 +1536,65 @@ void MFRC522::PICC_DumpMifareClassicSectorToSerial(Uid *uid,			///< Pointer to U
 		byteCount = sizeof(buffer);
 		status = MIFARE_Read(blockAddr, buffer, &byteCount);
 		if (status != STATUS_OK) {
-//            Serial.print("MIFARE_Read() failed: ");
-//			Serial.println(GetStatusCodeName(status));
+            Serial.print("MIFARE_Read() failed: ");
+			Serial.println(GetStatusCodeName(status));
 			continue;
 		}
 		// Dump data
-//        for (uint8_t index = 0; index < 16; index++) {
-//			if(buffer[index] < 0x10)
-//                Serial.print(" 0");
-//			else
-//                Serial.print(" ");
-//			Serial.print(buffer[index], HEX);
-//			if ((index % 4) == 3) {
-//                Serial.print(" ");
-//			}
-//		}
+        for (uint8_t index = 0; index < 16; index++) {
+			if(buffer[index] < 0x10)
+                Serial.print(" 0");
+			else
+                Serial.print(" ");
+			Serial.print(buffer[index], HEX);
+			if ((index % 4) == 3) {
+                Serial.print(" ");
+			}
+		}
 		// Parse sector trailer data
 		if (isSectorTrailer) {
-//			c1  = buffer[7] >> 4;
-//			c2  = buffer[8] & 0xF;
-//			c3  = buffer[8] >> 4;
-//			c1_ = buffer[6] & 0xF;
-//			c2_ = buffer[6] >> 4;
-//			c3_ = buffer[7] & 0xF;
-//            invertedError = (c1 != (~c1_ & 0xF)) || (c2 != (~c2_ & 0xF)) || (c3 != (~c3_ & 0xF));
-//            g[0] = ((c1 & 1) << 2) | ((c2 & 1) << 1) | ((c3 & 1) << 0);
-//            g[1] = ((c1 & 2) << 1) | ((c2 & 2) << 0) | ((c3 & 2) >> 1);
-//            g[2] = ((c1 & 4) << 0) | ((c2 & 4) >> 1) | ((c3 & 4) >> 2);
-//            g[3] = ((c1 & 8) >> 1) | ((c2 & 8) >> 2) | ((c3 & 8) >> 3);
+			c1  = buffer[7] >> 4;
+			c2  = buffer[8] & 0xF;
+			c3  = buffer[8] >> 4;
+			c1_ = buffer[6] & 0xF;
+			c2_ = buffer[6] >> 4;
+			c3_ = buffer[7] & 0xF;
+            invertedError = (c1 != (~c1_ & 0xF)) || (c2 != (~c2_ & 0xF)) || (c3 != (~c3_ & 0xF));
+            g[0] = ((c1 & 1) << 2) | ((c2 & 1) << 1) | ((c3 & 1) << 0);
+            g[1] = ((c1 & 2) << 1) | ((c2 & 2) << 0) | ((c3 & 2) >> 1);
+            g[2] = ((c1 & 4) << 0) | ((c2 & 4) >> 1) | ((c3 & 4) >> 2);
+            g[3] = ((c1 & 8) >> 1) | ((c2 & 8) >> 2) | ((c3 & 8) >> 3);
 			isSectorTrailer = false;
 		}
 
 		// Which access group is this block in?
 		if (no_of_blocks == 4) {
-//			group = blockOffset;
-//            firstInGroup = true;
+			group = blockOffset;
+            firstInGroup = true;
 		}
 		else {
-//			group = blockOffset / 5;
-//            firstInGroup = (group == 3) || (group != (blockOffset + 1) / 5);
+			group = blockOffset / 5;
+            firstInGroup = (group == 3) || (group != (blockOffset + 1) / 5);
 		}
 
-//		if (firstInGroup) {
-//			// Print access bits
-//            Serial.print(" [ ");
-//            Serial.print((g[group] >> 2) & 1, DEC); Serial.print(" ");
-//            Serial.print((g[group] >> 1) & 1, DEC); Serial.print(" ");
-//			Serial.print((g[group] >> 0) & 1, DEC);
-//            Serial.print(" ] ");
-//			if (invertedError) {
-//                Serial.print(" Inverted access bits did not match! ");
-//			}
-//		}
+		if (firstInGroup) {
+			// Print access bits
+            Serial.print(" [ ");
+            Serial.print((g[group] >> 2) & 1, DEC); Serial.print(" ");
+            Serial.print((g[group] >> 1) & 1, DEC); Serial.print(" ");
+			Serial.print((g[group] >> 0) & 1, DEC);
+            Serial.print(" ] ");
+			if (invertedError) {
+                Serial.print(" Inverted access bits did not match! ");
+			}
+		}
 
-//		if (group != 3 && (g[group] == 1 || g[group] == 6)) { // Not a sector trailer, a value block
-//			long value = (long(buffer[3])<<24) | (long(buffer[2])<<16) | (long(buffer[1])<<8) | long(buffer[0]);
-//            Serial.print(" Value=0x"); Serial.print(value, HEX);
-//            Serial.print(" Adr=0x"); Serial.print(buffer[12], HEX);
-//		}
-//		Serial.println();
+		if (group != 3 && (g[group] == 1 || g[group] == 6)) { // Not a sector trailer, a value block
+			long value = (long(buffer[3])<<24) | (long(buffer[2])<<16) | (long(buffer[1])<<8) | long(buffer[0]);
+            Serial.print(" Value=0x"); Serial.print(value, HEX);
+            Serial.print(" Adr=0x"); Serial.print(buffer[12], HEX);
+		}
+		Serial.println();
 	}
 
 	return;
@@ -1607,38 +1607,38 @@ void MFRC522::PICC_DumpMifareUltralightToSerial() {
     uint8_t status;
     uint8_t byteCount;
     uint8_t buffer[18];
-//    uint8_t i;
+    uint8_t i;
 
-//    Serial.println("Page  0  1  2  3");
+    Serial.println("Page  0  1  2  3");
 	// Try the mpages of the original Ultralight. Ultralight C has more pages.
     for (uint8_t page = 0; page < 16; page +=4) { // Read returns data for 4 pages at a time.
 		// Read pages
 		byteCount = sizeof(buffer);
 		status = MIFARE_Read(page, buffer, &byteCount);
 		if (status != STATUS_OK) {
-//            Serial.print("MIFARE_Read() failed: ");
-//			Serial.println(GetStatusCodeName(status));
+            Serial.print("MIFARE_Read() failed: ");
+			Serial.println(GetStatusCodeName(status));
 			break;
 		}
 		// Dump data
-//        for (uint8_t offset = 0; offset < 4; offset++) {
-//			i = page + offset;
-//			if(i < 10)
-//                Serial.print("  "); // Pad with spaces
-//			else
-//                Serial.print(" "); // Pad with spaces
-//			Serial.print(i);
-//            Serial.print("  ");
-//            for (uint8_t index = 0; index < 4; index++) {
-//				i = 4 * offset + index;
-//				if(buffer[i] < 0x10)
-//                    Serial.print(" 0");
-//				else
-//                    Serial.print(" ");
-//				Serial.print(buffer[i], HEX);
-//			}
-//			Serial.println();
-//		}
+        for (uint8_t offset = 0; offset < 4; offset++) {
+			i = page + offset;
+			if(i < 10)
+                Serial.print("  "); // Pad with spaces
+			else
+                Serial.print(" "); // Pad with spaces
+			Serial.print(i);
+            Serial.print("  ");
+            for (uint8_t index = 0; index < 4; index++) {
+				i = 4 * offset + index;
+				if(buffer[i] < 0x10)
+                    Serial.print(" 0");
+				else
+                    Serial.print(" ");
+				Serial.print(buffer[i], HEX);
+			}
+			Serial.println();
+		}
 	}
 } // End PICC_DumpMifareUltralightToSerial()
 
@@ -1690,21 +1690,21 @@ bool MFRC522::MIFARE_OpenUidBackdoor(bool logErrors) {
     uint8_t received;
     uint8_t status = PCD_TransceiveData(&cmd, (uint8_t)1, response, &received, &validBits, (uint8_t)0, false); // 40
 	if(status != STATUS_OK) {
-//		if(logErrors) {
-//            Serial.println("Card did not respond to 0x40 after HALT command. Are you sure it is a UID changeable one?");
-//            Serial.print("Error name: ");
-//			Serial.println(GetStatusCodeName(status));
-//		}
+		if (logErrors) {
+            Serial.println("Card did not respond to 0x40 after HALT command. Are you sure it is a UID changeable one?");
+            Serial.print("Error name: ");
+			Serial.println(GetStatusCodeName(status));
+		}
 		return false;
 	}
 	if (received != 1 || response[0] != 0x0A) {
-//		if (logErrors) {
-//            Serial.print("Got bad response on backdoor 0x40 command: ");
-//			Serial.print(response[0], HEX);
-//            Serial.print(" (");
-//			Serial.print(validBits);
-//            Serial.print(" valid bits)\r\n");
-//		}
+		if (logErrors) {
+            Serial.print("Got bad response on backdoor 0x40 command: ");
+			Serial.print(response[0], HEX);
+            Serial.print(" (");
+			Serial.print(validBits);
+            Serial.print(" valid bits)\r\n");
+		}
 		return false;
 	}
 
@@ -1712,21 +1712,21 @@ bool MFRC522::MIFARE_OpenUidBackdoor(bool logErrors) {
 	validBits = 8;
     status = PCD_TransceiveData(&cmd, (uint8_t)1, response, &received, &validBits, (uint8_t)0, false); // 43
 	if(status != STATUS_OK) {
-//		if(logErrors) {
-//            Serial.println("Error in communication at command 0x43, after successfully executing 0x40");
-//            Serial.print("Error name: ");
-//			Serial.println(GetStatusCodeName(status));
-//		}
+		if(logErrors) {
+            Serial.println("Error in communication at command 0x43, after successfully executing 0x40");
+            Serial.print("Error name: ");
+			Serial.println(GetStatusCodeName(status));
+		}
 		return false;
 	}
 	if (received != 1 || response[0] != 0x0A) {
-//		if (logErrors) {
-//            Serial.print("Got bad response on backdoor 0x43 command: ");
-//			Serial.print(response[0], HEX);
-//            Serial.print(" (");
-//			Serial.print(validBits);
-//            Serial.print(" valid bits)\r\n");
-//		}
+		if (logErrors) {
+            Serial.print("Got bad response on backdoor 0x43 command: ");
+			Serial.print(response[0], HEX);
+            Serial.print(" (");
+			Serial.print(validBits);
+            Serial.print(" valid bits)\r\n");
+		}
 		return false;
 	}
 
@@ -1746,9 +1746,9 @@ bool MFRC522::MIFARE_SetUid(uint8_t *newUid, uint8_t uidSize, bool logErrors) {
 
 	// UID + BCC byte can not be larger than 16 together
 	if (!newUid || !uidSize || uidSize > 15) {
-//		if (logErrors) {
-//            Serial.println("New UID buffer empty, size 0, or size > 15 given");
-//		}
+		if (logErrors) {
+            Serial.println("New UID buffer empty, size 0, or size > 15 given");
+		}
 		return false;
 	}
 
@@ -1766,25 +1766,25 @@ bool MFRC522::MIFARE_SetUid(uint8_t *newUid, uint8_t uidSize, bool logErrors) {
 //			  PICC_WakeupA(atqa_answer, &atqa_size);
 
 			if (!PICC_IsNewCardPresent() || !PICC_ReadCardSerial()) {
-//                Serial.println("No card was previously selected, and none are available. Failed to set UID.");
+                Serial.println("No card was previously selected, and none are available. Failed to set UID.");
 				return false;
 			}
 
             status = PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, (uint8_t)1, &key, &uid);
 			if (status != STATUS_OK) {
 				// We tried, time to give up
-//				if (logErrors) {
-//                    Serial.println("Failed to authenticate to card for reading, could not set UID: ");
-//					Serial.println(GetStatusCodeName(status));
-//				}
+				if (logErrors) {
+                    Serial.println("Failed to authenticate to card for reading, could not set UID: ");
+					Serial.println(GetStatusCodeName(status));
+				}
 				return false;
 			}
 		}
 		else {
-//			if (logErrors) {
-//                Serial.print("PCD_Authenticate() failed: ");
-//				Serial.println(GetStatusCodeName(status));
-//			}
+			if (logErrors) {
+                Serial.print("PCD_Authenticate() failed: ");
+				Serial.println(GetStatusCodeName(status));
+			}
 			return false;
 		}
 	}
@@ -1794,11 +1794,11 @@ bool MFRC522::MIFARE_SetUid(uint8_t *newUid, uint8_t uidSize, bool logErrors) {
     uint8_t byteCount = sizeof(block0_buffer);
     status = MIFARE_Read((uint8_t)0, block0_buffer, &byteCount);
 	if (status != STATUS_OK) {
-//		if (logErrors) {
-//            Serial.print("MIFARE_Read() failed: ");
-//			Serial.println(GetStatusCodeName(status));
-//            Serial.println("Are you sure your KEY A for sector 0 is 0xFFFFFFFFFFFF?");
-//		}
+		if (logErrors) {
+            Serial.print("MIFARE_Read() failed: ");
+			Serial.println(GetStatusCodeName(status));
+            Serial.println("Are you sure your KEY A for sector 0 is 0xFFFFFFFFFFFF?");
+		}
 		return false;
 	}
 
@@ -1817,19 +1817,19 @@ bool MFRC522::MIFARE_SetUid(uint8_t *newUid, uint8_t uidSize, bool logErrors) {
 
 	// Activate UID backdoor
 	if (!MIFARE_OpenUidBackdoor(logErrors)) {
-//		if (logErrors) {
-//            Serial.println("Activating the UID backdoor failed.");
-//		}
+		if (logErrors) {
+            Serial.println("Activating the UID backdoor failed.");
+		}
 		return false;
 	}
 
 	// Write modified block 0 back to card
     status = MIFARE_Write((uint8_t)0, block0_buffer, (uint8_t)16);
 	if (status != STATUS_OK) {
-//		if (logErrors) {
-//            Serial.print("MIFARE_Write() failed: ");
-//			Serial.println(GetStatusCodeName(status));
-//		}
+		if (logErrors) {
+            Serial.print("MIFARE_Write() failed: ");
+			Serial.println(GetStatusCodeName(status));
+		}
 		return false;
 	}
 
@@ -1852,10 +1852,10 @@ bool MFRC522::MIFARE_UnbrickUidSector(bool logErrors) {
 	// Write modified block 0 back to card
     uint8_t status = MIFARE_Write((uint8_t)0, block0_buffer, (uint8_t)16);
 	if (status != STATUS_OK) {
-//		if (logErrors) {
-//            Serial.print("MIFARE_Write() failed: ");
-//			Serial.println(GetStatusCodeName(status));
-//		}
+		if (logErrors) {
+            Serial.print("MIFARE_Write() failed: ");
+			Serial.println(GetStatusCodeName(status));
+		}
 		return false;
 	}
 	return true;
