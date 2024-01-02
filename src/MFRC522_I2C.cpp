@@ -8,53 +8,60 @@
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+
 #include <cstring>
+#include <iostream>
+#include <string>
+#include <utility>
 
 #include "driver/i2c.h"
 
 #include <MFRC522_I2C.h>
 
 #include "esp_log.h"
-#include <string>
-#include <utility>
 
 #define TAG "mfrc" // Replace with your tag
 
+// ----------------------------------------
 // BEGIN HACKY FAKE ARDUINO API
+// ----------------------------------------
 #define F(str)     // NOP
 #define DEC 01
 #define HEX 02
 
 class FakeSerial {
-    // TODO: newline treatment is not right in here.  this will add extra newlines/etc.
+    // hacky replacement for Arduino 'Serial'
     public:
-    explicit FakeSerial(std::string Tag) : tag(std::move(Tag)) {}
-
-    void print(const std::string& msg = "", int format = 0) {
-        // TODO: use format of HEX or DEC
-        ESP_LOGI(tag.c_str(), "%s", msg.c_str()); // Print without newline
+    void print(const std::string& msg = "") {
+        std::cout << msg;
     }
 
-    void println(const std::string& msg = "", int format = 0) {
-        // TODO: use format of HEX or DEC
-        ESP_LOGI(tag.c_str(), "%s\n", msg.c_str()); // Print with newline
+    void println(const std::string& msg = "") {
+        print(msg);
+        std::cout << std::endl;
     }
 
-    void print(int i, int format = 0) {
-        // TODO: use format of HEX or DEC
-        ESP_LOGI(tag.c_str(), "%d", i);
+    void print(int i, int format = DEC) {
+        if (format==HEX) {
+            std::cout << std::hex << i;
+            return;
+        }
+        std::cout << std::dec << i;
     }
 
-    void println(int i, int format = 0) {
-        // TODO: use format of HEX or DEC
-        ESP_LOGI(tag.c_str(), "%d\n", i);
+    void println(int i, int format = DEC) {
+        print(i, format);
+        std::cout << std::endl;
     }
 
 private:
     std::string tag;
 };
-FakeSerial Serial(TAG);
+FakeSerial Serial;
+
+// ----------------------------------------
 // END FAKE ARDUINO
+// ----------------------------------------
 
 // ABSOLUTELY REQUIRED TO IMPLEMENT
 // (I only commented this out because I do this elsewhere in my own app. YOU NEED TO DO IT THOUGH)
