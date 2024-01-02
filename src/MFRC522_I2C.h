@@ -320,7 +320,7 @@ public:
 	/////////////////////////////////////////////////////////////////////////////////////
 	// Functions for setting up the Arduino
 	/////////////////////////////////////////////////////////////////////////////////////
-    MFRC522(uint8_t chipAddress, uint8_t resetPowerDownPin);
+    explicit MFRC522(uint8_t chipAddress, int8_t resetPowerDownPin = -1);
 
 	/////////////////////////////////////////////////////////////////////////////////////
 	// Basic interface functions for communicating with the MFRC522
@@ -329,7 +329,7 @@ public:
     void PCD_WriteRegister(uint8_t reg, uint8_t count, uint8_t *values);
     uint8_t PCD_ReadRegister(uint8_t reg);
     void PCD_ReadRegister(uint8_t reg, uint8_t count, uint8_t *values, uint8_t rxAlign = 0);
-	void setBitMask(unsigned char reg, unsigned char mask);
+	// TODO? void setBitMask(unsigned char reg, unsigned char mask);
     void PCD_SetRegisterBitMask(uint8_t reg, uint8_t mask);
     void PCD_ClearRegisterBitMask(uint8_t reg, uint8_t mask);
     uint8_t PCD_CalculateCRC(uint8_t *data, uint8_t length, uint8_t *result);

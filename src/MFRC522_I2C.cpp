@@ -20,24 +20,33 @@
 
 #define TAG "mfrc" // Replace with your tag
 
+// BEGIN HACKY FAKE ARDUINO API
+#define F(str)     // NOP
+#define DEC 01
+#define HEX 02
+
 class FakeSerial {
     // TODO: newline treatment is not right in here.  this will add extra newlines/etc.
     public:
     explicit FakeSerial(std::string Tag) : tag(std::move(Tag)) {}
 
-    void print(const std::string& msg) {
+    void print(const std::string& msg = "", int format = 0) {
+        // TODO: use format of HEX or DEC
         ESP_LOGI(tag.c_str(), "%s", msg.c_str()); // Print without newline
     }
 
-    void println(const std::string& msg) {
+    void println(const std::string& msg = "", int format = 0) {
+        // TODO: use format of HEX or DEC
         ESP_LOGI(tag.c_str(), "%s\n", msg.c_str()); // Print with newline
     }
 
-    void print(int i) {
+    void print(int i, int format = 0) {
+        // TODO: use format of HEX or DEC
         ESP_LOGI(tag.c_str(), "%d", i);
     }
 
-    void println(int i) {
+    void println(int i, int format = 0) {
+        // TODO: use format of HEX or DEC
         ESP_LOGI(tag.c_str(), "%d\n", i);
     }
 
@@ -45,6 +54,7 @@ private:
     std::string tag;
 };
 FakeSerial Serial(TAG);
+// END FAKE ARDUINO
 
 // ABSOLUTELY REQUIRED TO IMPLEMENT
 // (I only commented this out because I do this elsewhere in my own app. YOU NEED TO DO IT THOUGH)
@@ -59,7 +69,7 @@ FakeSerial Serial(TAG);
  * Prepares the output pins.
  */
 MFRC522::MFRC522(	uint8_t chipAddress,
-                    uint8_t resetPowerDownPin	///< Arduino pin connected to MFRC522's reset and power down input (Pin 6, NRSTPD, active low)
+                    int8_t resetPowerDownPin	///< Arduino pin connected to MFRC522's reset and power down input (Pin 6, NRSTPD, active low)
 				) {
 	_chipAddress = chipAddress;
 	_resetPowerDownPin = resetPowerDownPin;
@@ -281,15 +291,17 @@ void MFRC522::PCD_Init() {
     bool sw_reset_needed = true;
 
     #if RESET_VIA_GPIO == 1
-	pinMode(_resetPowerDownPin, OUTPUT);
-	if (digitalRead(_resetPowerDownPin) == LOW) {
-        // TODO: finish implementing for ESP-IDF
-        //The MFRC522 chip is in power down mode.
-		digitalWrite(_resetPowerDownPin, HIGH);		// Exit power down mode. This triggers a hard reset.
-		// Section 8.8.2 in the datasheet says the oscillator start-up time is the start up time of the crystal + 37,74�s. Let us be generous: 50ms.
-		delay(50);
-        sw_reset_needed = false;
-	}
+    if (_resetPowerDownPin != -1) {
+        pinMode(_resetPowerDownPin, OUTPUT);
+        if (digitalRead(_resetPowerDownPin) == LOW) {
+            // TODO: finish implementing for ESP-IDF
+            //The MFRC522 chip is in power down mode.
+            digitalWrite(_resetPowerDownPin, HIGH);		// Exit power down mode. This triggers a hard reset.
+            // Section 8.8.2 in the datasheet says the oscillator start-up time is the start up time of the crystal + 37,74�s. Let us be generous: 50ms.
+            delay(50);
+            sw_reset_needed = false;
+        }
+    }
     #endif
 
     // Perform a soft reset
@@ -741,7 +753,7 @@ uint8_t MFRC522::PICC_Select(	Uid *uid,			///< Pointer to Uid struct. Normally o
 		while (!selectDone) {
 			// Find out how many bits and bytes to send and receive.
 			if (currentLevelKnownBits >= 32) { // All UID bits in this Cascade Level are known. This is a SELECT.
-				//Serial.print(F("SELECT: currentLevelKnownBits=")); Serial.println(currentLevelKnownBits, DEC);
+				Serial.print(F("SELECT: currentLevelKnownBits=")); Serial.println(currentLevelKnownBits, DEC);
 				buffer[1] = 0x70; // NVB - Number of Valid Bits: Seven whole bytes
 				// Calculate BCC - Block Check Character
 				buffer[6] = buffer[2] ^ buffer[3] ^ buffer[4] ^ buffer[5];
@@ -757,7 +769,7 @@ uint8_t MFRC522::PICC_Select(	Uid *uid,			///< Pointer to Uid struct. Normally o
 				responseLength	= 3;
 			}
 			else { // This is an ANTICOLLISION.
-				//Serial.print(F("ANTICOLLISION: currentLevelKnownBits=")); Serial.println(currentLevelKnownBits, DEC);
+				Serial.print(F("ANTICOLLISION: currentLevelKnownBits=")); Serial.println(currentLevelKnownBits, DEC);
 				txLastBits		= currentLevelKnownBits % 8;
 				count			= currentLevelKnownBits / 8;	// Number of whole bytes in the UID part.
 				index			= 2 + count;					// Number of whole bytes: SEL + NVB + UIDs
@@ -1324,20 +1336,20 @@ void MFRC522::PICC_DumpToSerial(Uid *uid	///< Pointer to Uid struct returned fro
 	MIFARE_Key key;
 
 	// UID
-//    Serial.print("Card UID:");
-//    for (uint8_t i = 0; i < uid->size; i++) {
-//		if(uid->uidByte[i] < 0x10)
-//            Serial.print(" 0");
-//		else
-//            Serial.print(" ");
-//		Serial.print(uid->uidByte[i], HEX);
-//	}
-//	Serial.println();
+    Serial.print("Card UID:");
+    for (uint8_t i = 0; i < uid->size; i++) {
+		if(uid->uidByte[i] < 0x10)
+            Serial.print(" 0");
+		else
+            Serial.print(" ");
+		Serial.print(uid->uidByte[i], HEX);
+	}
+	Serial.println();
 
 	// PICC type
     uint8_t piccType = PICC_GetType(uid->sak);
-//    Serial.print("PICC type: ");
-//	Serial.println(PICC_GetTypeName(piccType));
+    Serial.print("PICC type: ");
+	Serial.println(PICC_GetTypeName(piccType));
 
 	// Dump contents
 	switch (piccType) {
@@ -1359,7 +1371,7 @@ void MFRC522::PICC_DumpToSerial(Uid *uid	///< Pointer to Uid struct returned fro
 		case PICC_TYPE_ISO_18092:
 		case PICC_TYPE_MIFARE_PLUS:
 		case PICC_TYPE_TNP3XXX:
-//            Serial.println("Dumping memory contents not implemented for that PICC type.");
+            Serial.println("Dumping memory contents not implemented for that PICC type.");
 			break;
 
 		case PICC_TYPE_UNKNOWN:
