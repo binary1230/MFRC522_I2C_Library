@@ -32,11 +32,11 @@
 class FakeSerial {
     // hacky replacement for Arduino 'Serial'
     public:
-    void print(const std::string& msg = "") {
+    void print(const char* msg = "") {
         std::cout << msg;
     }
 
-    void println(const std::string& msg = "") {
+    void println(const char* msg = "") {
         print(msg);
         std::cout << std::endl;
     }
@@ -757,7 +757,9 @@ uint8_t MFRC522::PICC_Select(	Uid *uid,			///< Pointer to Uid struct. Normally o
 		while (!selectDone) {
 			// Find out how many bits and bytes to send and receive.
 			if (currentLevelKnownBits >= 32) { // All UID bits in this Cascade Level are known. This is a SELECT.
-				Serial.print(F("SELECT: currentLevelKnownBits=")); Serial.println(currentLevelKnownBits, DEC);
+                if (_logDebugInfo) {
+                    Serial.print(F("SELECT: currentLevelKnownBits="));Serial.println(currentLevelKnownBits, DEC);
+                }
 				buffer[1] = 0x70; // NVB - Number of Valid Bits: Seven whole bytes
 				// Calculate BCC - Block Check Character
 				buffer[6] = buffer[2] ^ buffer[3] ^ buffer[4] ^ buffer[5];
@@ -773,7 +775,9 @@ uint8_t MFRC522::PICC_Select(	Uid *uid,			///< Pointer to Uid struct. Normally o
 				responseLength	= 3;
 			}
 			else { // This is an ANTICOLLISION.
-				Serial.print(F("ANTICOLLISION: currentLevelKnownBits=")); Serial.println(currentLevelKnownBits, DEC);
+                if (_logDebugInfo) {
+                    Serial.print(F("ANTICOLLISION: currentLevelKnownBits=")); Serial.println(currentLevelKnownBits, DEC);
+                }
 				txLastBits		= currentLevelKnownBits % 8;
 				count			= currentLevelKnownBits / 8;	// Number of whole bytes in the UID part.
 				index			= 2 + count;					// Number of whole bytes: SEL + NVB + UIDs
@@ -1337,7 +1341,7 @@ const char *MFRC522::PICC_GetTypeName(uint8_t piccType	///< One of the PICC_Type
 void MFRC522::PCD_DumpVersionToSerial() {
 	// Get the MFRC522 firmware version
 	uint8_t v = PCD_ReadRegister(VersionReg);
-	Serial.print(F("Firmware Version: 0x"));
+	Serial.print(F("MFRC522 Firmware Version Detected: 0x"));
 	Serial.print(v, HEX);
 	// Lookup which version
 	switch(v) {

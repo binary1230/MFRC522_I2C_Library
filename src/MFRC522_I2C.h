@@ -403,6 +403,8 @@ public:
 private:
     uint16_t _chipAddress;
     uint8_t _resetPowerDownPin;	// Arduino pin connected to MFRC522's reset and power down input (Pin 6, NRSTPD, active low)
+    bool _logDebugInfo = false;
+
     uint8_t MIFARE_TwoStepHelper(uint8_t command, uint8_t blockAddr, long data);
 };
 
