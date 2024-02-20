@@ -859,6 +859,11 @@ uint8_t MFRC522::PICC_Select(	Uid *uid,			///< Pointer to Uid struct. Normally o
 		if ((buffer[2] != responseBuffer[1]) || (buffer[3] != responseBuffer[2])) {
 			return STATUS_CRC_WRONG;
 		}
+
+        // TODO: GCC complaining that error: 'responseBuffer' may be used uninitialized on the line below.
+        //       we should investigate why that's happening and fix it if it's legit.
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic warning "-Wmaybe-uninitialized"
 		if (responseBuffer[0] & 0x04) { // Cascade bit set - UID not complete yes
 			cascadeLevel++;
 		}
@@ -866,6 +871,8 @@ uint8_t MFRC522::PICC_Select(	Uid *uid,			///< Pointer to Uid struct. Normally o
 			uidComplete = true;
 			uid->sak = responseBuffer[0];
 		}
+        #pragma GCC diagnostic pop
+
 	} // End of while (!uidComplete)
 
 	// Set correct uid->size
