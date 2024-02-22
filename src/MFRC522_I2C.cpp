@@ -9,7 +9,7 @@
 * This version modified for use on ESP32 only using native ESP-IDF (no arduino) by Dominic Cerquetti
 */
 
-#include <cstring>
+#include <cstring> // for memcpy()
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>

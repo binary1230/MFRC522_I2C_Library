@@ -78,7 +78,7 @@
 #ifndef MFRC522_h
 #define MFRC522_h
 
-#include <cstdint>
+// #include <cstdint>
 
 #define MFRC_INCLUDE_SELFTEST 0
 
