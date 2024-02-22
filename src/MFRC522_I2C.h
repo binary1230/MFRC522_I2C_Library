@@ -80,6 +80,9 @@
 
 #include <cstdint>
 
+#define MFRC_INCLUDE_SELFTEST 0
+
+#if MFRC_INCLUDE_SELFTEST==1
 // Firmware data for self-test
 // Reference values based on firmware version
 // Hint: if needed, you can remove unused self-test data to save flash memory
@@ -132,6 +135,7 @@ const uint8_t FM17522_firmware_reference[] = {
 	0x51, 0x64, 0xAB, 0x3E, 0xE9, 0x15, 0xB5, 0xAB,
 	0x56, 0x9A, 0x98, 0x82, 0x26, 0xEA, 0x2A, 0x62
 };
+#endif // MFRC_INCLUDE_SELFTEST
 
 class MFRC522 {
 public:

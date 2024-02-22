@@ -414,7 +414,14 @@ void MFRC522::PCD_SetAntennaGain(uint8_t mask) {
  *
  * @return Whether or not the test passed.
  */
-bool MFRC522::PCD_PerformSelfTest() {
+bool MFRC522::PCD_PerformSelfTest()  // NOLINT(*-convert-member-functions-to-static)
+{
+    #if MFRC_INCLUDE_SELFTEST != 1
+    // main reason to disable is simply saving some flash memory
+    Serial.println("MFRC self-test err: not compiled in. skipping");
+    return false;
+    #else
+
 	// This follows directly the steps outlined in 16.1.1
 	// 1. Perform a soft reset.
 	PCD_Reset();
@@ -456,7 +463,7 @@ bool MFRC522::PCD_PerformSelfTest() {
 	// Determine firmware version (see section 9.3.4.8 in spec)
     uint8_t version = PCD_ReadRegister(VersionReg);
 
-	// Pick the appropriate reference values
+    // Pick the appropriate reference values
     const uint8_t *reference;
 	switch (version) {
 		case 0x88:	// Fudan Semiconductor FM17522 clone
@@ -484,6 +491,7 @@ bool MFRC522::PCD_PerformSelfTest() {
 
 	// Test passed; all is good.
 	return true;
+    #endif // MFRC_INCLUDE_SELFTEST
 } // End PCD_PerformSelfTest()
 
 /////////////////////////////////////////////////////////////////////////////////////
