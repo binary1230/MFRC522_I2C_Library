@@ -4,68 +4,83 @@
 * NOTE: Please also check the comments in MFRC522.h - they provide useful hints and background information.
 * Released into the public domain.
 * Author: arozcan @ https://github.com/arozcan/MFRC522-I2C-Library
+* original fork was for use with Arduino Framework.
+*
+* This version modified for use on ESP32 only using native ESP-IDF (no arduino) by Dominic Cerquetti
 */
+
+#include <cstring>
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#include <cstring>
-#include <iostream>
-#include <string>
-#include <utility>
-
+#include "esp_log.h"
 #include "driver/i2c.h"
 
 #include <MFRC522_I2C.h>
 
-#include "esp_log.h"
+#ifdef ARDUINO
+// if you hit this, you're trying to use this with the Arduino framework.
+// this fork of the library is ONLY intended for use with ESP-IDF natively (no arduino involved)
+// see other forks for the arduino-friendly version
+#error "This fork of this library is NOT compatible with non-ESP-IDF native usage. don't use this with Arduino framework"
+#endif
 
-#define TAG "mfrc" // Replace with your tag
 
-// ----------------------------------------
-// BEGIN HACKY FAKE ARDUINO API
-// ----------------------------------------
-#define F(str) (str)    // NOP
-#define DEC 01
-#define HEX 02
+#ifndef ARDUINO
+// --------------------------------------------------------------------------------
+// BEGIN HACKY FAKE ARDUINO SERIAL PRINTING API WRAPPER
+// please don't rely on this for anything important
+// do not try and use this with actual arduino code, you will likely be saddened.
+// a cleaner/better approach would be to just rip out all Serial.printxxx() in this file and replace with native
+// ESP_LOGxx() statements. to optimize for mergability though, we'll leave the Serial wrapper code here in case we
+// want to merge changes back and forth with upstream libs.
+// --------------------------------------------------------------------------------
+#define F(str) (str)    // NOP on ESP-IDF, we don't care right now.
 
-class FakeSerial {
-    // hacky replacement for Arduino 'Serial'
-    public:
-    void print(const char* msg = "") {
-        std::cout << msg;
-    }
-
-    void println(const char* msg = "") {
-        print(msg);
-        std::cout << std::endl;
-    }
-
-    void print(int i, int format = DEC) {
-        if (format==HEX) {
-            std::cout << std::hex << i;
-            return;
-        }
-        std::cout << std::dec << i;
-    }
-
-    void println(int i, int format = DEC) {
-        print(i, format);
-        std::cout << std::endl;
-    }
-
-private:
-    std::string tag;
+enum Format {
+    DEC=01,
+    HEX=02,
 };
-FakeSerial Serial;
 
+class ArduinoToPrintfSerialWrapper {
+    // NOTE: can't directly use the most common ESP_LOGxxx() here
+    //       because print() expects us to not put a newline in there
+    //
+    // NOTE2: we're not using cout/iostream here because it links with libstdc++, and that adds ~300KB to the
+    //        final firmware binary size on this project.
+public:
+    void print(const char *msg = "")     // NOLINT(*-convert-member-functions-to-static)
+    {
+        printf("%s", msg ? msg : "");
+    }
+
+    void print(int i, Format format = DEC) // NOLINT(*-convert-member-functions-to-static)
+    {
+        printf(format == HEX ? "%x" : "%d", i);
+    }
+
+    void println(const char *msg = "")  // NOLINT(*-convert-member-functions-to-static)
+    {
+        print(msg);
+        puts("\n");
+    }
+
+    void println(int i, Format format = DEC)    // NOLINT(*-convert-member-functions-to-static)
+    {
+        print(i, format);
+        println();
+    }
+};
+static ArduinoToPrintfSerialWrapper Serial;
+#endif // ARDUINO
 // ----------------------------------------
-// END FAKE ARDUINO
+// END FAKE ARDUINO WRAPPER STUFF
 // ----------------------------------------
 
-// ABSOLUTELY REQUIRED TO IMPLEMENT
-// (I only commented this out because I do this elsewhere in my own app. YOU NEED TO DO IT THOUGH)
-#define RESET_VIA_GPIO 0
+// GPIO reset is REQUIRED to implement for the code below to work.
+// For this codebase, this is turned off and it's assumed you will do this before calling the function
+#define MFRC_INIT_SHOULD_HANDLE_RESET_VIA_GPIO 0
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Functions for setting up the Arduino
@@ -303,11 +318,12 @@ void MFRC522::PCD_Init() {
 	// Set the resetPowerDownPin as digital output, do not reset or power down.
     bool sw_reset_needed = true;
 
-    #if RESET_VIA_GPIO == 1
+    #if MFRC_INIT_SHOULD_HANDLE_RESET_VIA_GPIO == 1
+    // TODO: finish implementing this for ESP-IDF
+    // normally, you want to do this.
     if (_resetPowerDownPin != -1) {
         pinMode(_resetPowerDownPin, OUTPUT);
         if (digitalRead(_resetPowerDownPin) == LOW) {
-            // TODO: finish implementing for ESP-IDF
             //The MFRC522 chip is in power down mode.
             digitalWrite(_resetPowerDownPin, HIGH);		// Exit power down mode. This triggers a hard reset.
             // Section 8.8.2 in the datasheet says the oscillator start-up time is the start up time of the crystal + 37,74�s. Let us be generous: 50ms.
