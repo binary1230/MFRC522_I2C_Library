@@ -72,24 +72,28 @@ enum Format {
 //       because print() expects us to not put a newline in there
 static void serial_print(const char *msg)
 {
-    puts(msg);
+    // no newline
+    printf("%s", msg);
 }
 
 static void serial_print_f(int i, enum Format format)
 {
+    // no newline
     printf(format == HEX ? "%x" : "%d", i);
 }
 
 static void serial_println(const char *msg)
 {
+    // add newline
     serial_print(msg);
     serial_print("\n");
 }
 
 static void serial_println_f(int i, enum Format format)
 {
+    // add newline
     serial_print_f(i, format);
-    serial_println("");
+    serial_print("\n");
 }
 // ----------------------------------------
 // END FAKE ARDUINO WRAPPER STUFF
