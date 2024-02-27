@@ -105,12 +105,6 @@ static void serial_println_f(int i, enum Format format)
 
 bool MFRC522_Init(uint8_t chipAddress, int resetPowerDownPin)
 {
-    assert(!g_mfrc._initialized);
-    if (g_mfrc._initialized) {
-        serial_println("ERR: MFRC already initialized, ignoring request");
-        return false;
-    }
-
     g_mfrc._chipAddress = chipAddress;
     g_mfrc._resetPowerDownPin = resetPowerDownPin; // -1 to skip
     g_mfrc._initialized = true;
