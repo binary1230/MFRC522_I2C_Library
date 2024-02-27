@@ -3,7 +3,7 @@ set(headers
 )
 
 set(sources
-    src/MFRC522_I2C.cpp
+        src/MFRC522_I2C.c
 )
 
 idf_component_register(
