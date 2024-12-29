@@ -343,6 +343,7 @@ void PCD_AntennaOn();
 void PCD_AntennaOff();
 uint8_t PCD_GetAntennaGain();
 void PCD_SetAntennaGain(uint8_t mask);
+void PCD_SetMaxInductance();
 bool PCD_PerformSelfTest();
 
 /////////////////////////////////////////////////////////////////////////////////////

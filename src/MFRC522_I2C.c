@@ -374,6 +374,7 @@ void PCD_Init()
 
 	PCD_WriteRegister(TxASKReg, 0x40);		// Default 0x00. Force a 100 % ASK modulation independent of the ModGsPReg register setting
 	PCD_WriteRegister(ModeReg, 0x3D);		// Default 0x3F. Set the preset value for the CRC coprocessor for the CalcCRC command to 0x6363 (ISO 14443-3 part 6.2.4)
+
 	PCD_AntennaOn();						// Enable the antenna driver pins TX1 and TX2 (they were disabled by the reset)
 } // End PCD_Init()
 
@@ -392,6 +393,16 @@ void PCD_Reset() {
 		// PCD still restarting - unlikely after waiting 50ms, but better safe than sorry.
 	}
 } // End PCD_Reset()
+
+void PCD_SetMaxInductance()
+{
+	// experimental, not sure this actually does anything useful.
+	// purports to increase the conductance of the TX pins and
+	// potentially increase the range of scans (uses/drives more power)
+	PCD_WriteRegister(CWGsPReg, 0b111111);
+	PCD_WriteRegister(ModGsPReg, 0b111111);
+	PCD_WriteRegister(GsNReg, 0b11111111);
+}
 
 /**
  * Turns the antenna on by enabling pins TX1 and TX2.
