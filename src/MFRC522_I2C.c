@@ -396,12 +396,30 @@ void PCD_Reset() {
 
 void PCD_SetMaxInductance()
 {
-	// experimental, not sure this actually does anything useful.
+	// experimental:, not sure this actually does anything useful.
 	// purports to increase the conductance of the TX pins and
 	// potentially increase the range of scans (uses/drives more power)
-	PCD_WriteRegister(CWGsPReg, 0b111111);
-	PCD_WriteRegister(ModGsPReg, 0b111111);
-	PCD_WriteRegister(GsNReg, 0b11111111);
+
+	// -- CWGsPReg -- defines the conductance of the p-driver output during periods of no modulation
+	const int CWGsP = 0b100000; // 6-bit	[default = 0b100000]
+	PCD_WriteRegister(CWGsPReg, CWGsP);		// uses bits 0-5. bits 6,7 reserved
+
+	// -- ModGsPReg -- defines the conductance of the p-driver output during periods of modulation
+	const int ModGs = 0b100000; // 6-bit	[default = 0b100000]
+	PCD_WriteRegister(ModGsPReg, ModGs);	// uses bits 0-5. bits 6,7 reserved
+
+	// -- GsNReg -- selects the conductance of the antenna driver pins TX1 and TX2 for modulation
+	//
+	// defines the conductance of the output n-driver during periods without
+	// modulation which can be used to regulate the output power and
+	// subsequently current consumption and operating distance
+	const int CWGsN  = 0b1000;	// 4-bit	[default = 0b1000]
+	//
+	//
+	// defines the conductance of the output n-driver during periods without modulation
+	// which can be used to regulate the modulation index
+	const int ModGsN = 0b1000;	// 4-bit	[default = 0b1000]
+	PCD_WriteRegister(GsNReg, CWGsN << 4 | ModGsN);
 }
 
 /**
@@ -1970,9 +1988,25 @@ bool MIFARE_UnbrickUidSector(bool logErrors) {
  * @return bool
  */
 bool PICC_IsNewCardPresent() {
-    uint8_t bufferATQA[2];
-    uint8_t bufferSize = sizeof(bufferATQA);
-    uint8_t result = PICC_RequestA(bufferATQA, &bufferSize);
+	// uint8_t atqa[2];
+	// uint8_t size = sizeof(atqa);
+	// uint8_t status;
+	//
+	// // EXPERIMENTAL
+	// // 7-bit short frame for WUPA/REQA
+	// PCD_WriteRegister(BitFramingReg, 0x07); // TxLastBits=7
+	// status = PICC_REQA_or_WUPA(PICC_CMD_WUPA, atqa, &size);
+	// if (status != STATUS_OK && status != STATUS_COLLISION) {
+	// 	size = sizeof(atqa);
+	// 	status = PICC_REQA_or_WUPA(PICC_CMD_REQA, atqa, &size);
+	// }
+	// PCD_WriteRegister(BitFramingReg, 0x00); // back to 8-bit
+	//
+	// return (status == STATUS_OK || status == STATUS_COLLISION);
+
+	uint8_t bufferATQA[2];
+	uint8_t bufferSize = sizeof(bufferATQA);
+	uint8_t result = PICC_RequestA(bufferATQA, &bufferSize);
 	return (result == STATUS_OK || result == STATUS_COLLISION);
 } // End PICC_IsNewCardPresent()
 
