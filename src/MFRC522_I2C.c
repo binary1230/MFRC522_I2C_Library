@@ -42,6 +42,9 @@ typedef struct {
 
     // when performing i2c operations, how long should we block and wait before timing out?
     TickType_t _i2cIoTimeoutTicks;
+
+	// i2c port to use (almost always I2C_NUM_0)
+	i2c_port_t _i2cPort;
 } MFRC5222;
 
 // TODO: doing this as a global means we can only have one device and there's global state.
@@ -52,7 +55,8 @@ static MFRC5222 g_mfrc = {
         ._logDebugInfo = false,
         ._initialized = false,
         ._i2cIoTimeoutTicks = pdMS_TO_TICKS(1000),
-        // ._uid = {}
+		._i2cPort = I2C_NUM_0,
+		// ._uid = {}
 };
 
 // --------------------------------------------------------------------------------
@@ -110,6 +114,7 @@ bool MFRC522_Init(uint8_t chipAddress, int resetPowerDownPin)
     g_mfrc._initialized = true;
     g_mfrc._logDebugInfo = false;
     g_mfrc._i2cIoTimeoutTicks = pdMS_TO_TICKS(1000);
+	g_mfrc._i2cPort = I2C_NUM_0;
 
     return true;
 }
@@ -126,15 +131,21 @@ bool MFRC522_Init(uint8_t chipAddress, int resetPowerDownPin)
 void PCD_WriteRegister(	    uint8_t reg,		///< The register to write to. One of the PCD_Register enums.
                             uint8_t value		///< The value to write.
                         ) {
-    // TODO: handle errors, AT ALL.
+
+	// TODO: this doesn't handle errors, basically at all.
+
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, (g_mfrc._chipAddress << 1) | I2C_MASTER_WRITE, true);
     i2c_master_write_byte(cmd, reg, true);
     i2c_master_write_byte(cmd, value, true);
     i2c_master_stop(cmd);
-    /*esp_err_t ret = */ i2c_master_cmd_begin(I2C_NUM_0, cmd, g_mfrc._i2cIoTimeoutTicks);
+    const esp_err_t err = i2c_master_cmd_begin(g_mfrc._i2cPort, cmd, g_mfrc._i2cIoTimeoutTicks);
     i2c_cmd_link_delete(cmd);
+	if (err != ESP_OK) {
+		printf("%s: MFRC i2c err: %s\n", __FUNCTION__, esp_err_to_name(err));
+		return;
+	}
 } // End PCD_WriteRegister()
 
 /**
@@ -156,8 +167,12 @@ void PCD_WriteRegisterData(	uint8_t reg,		///< The register to write to. One of 
     i2c_master_write_byte(cmd, reg, true);
     i2c_master_write(cmd, values, count, true);
     i2c_master_stop(cmd);
-    i2c_master_cmd_begin(I2C_NUM_0, cmd, g_mfrc._i2cIoTimeoutTicks);
+    const esp_err_t err = i2c_master_cmd_begin(g_mfrc._i2cPort, cmd, g_mfrc._i2cIoTimeoutTicks);
     i2c_cmd_link_delete(cmd);
+	if (err != ESP_OK) {
+		printf("%s: MFRC i2c err: %s\n", __FUNCTION__, esp_err_to_name(err));
+		return;
+	}
 } // End PCD_WriteRegister()
 
 /**
@@ -179,10 +194,12 @@ uint8_t PCD_ReadRegister(uint8_t reg	///< The register to read from. One of the 
     i2c_master_write_byte(cmd, (g_mfrc._chipAddress << 1) | I2C_MASTER_WRITE, true);
     i2c_master_write_byte(cmd, reg, true);
     i2c_master_stop(cmd);
-    esp_err_t err = i2c_master_cmd_begin(I2C_NUM_0, cmd, g_mfrc._i2cIoTimeoutTicks); // Sending the command
+    esp_err_t err = i2c_master_cmd_begin(g_mfrc._i2cPort, cmd, g_mfrc._i2cIoTimeoutTicks); // Sending the command
     i2c_cmd_link_delete(cmd); // Deleting the command link
-    if (err != ESP_OK)
-        return 0;
+	if (err != ESP_OK) {
+		printf("%s: MFRC i2c err(1): %s\n", __FUNCTION__, esp_err_to_name(err));
+		return 0;
+	}
 
     // ----
 
@@ -196,10 +213,12 @@ uint8_t PCD_ReadRegister(uint8_t reg	///< The register to read from. One of the 
     // Reading the byte from the specified register
     i2c_master_read_byte(cmd, &value, I2C_MASTER_NACK); // NACK for the last byte
     i2c_master_stop(cmd);
-    err = i2c_master_cmd_begin(I2C_NUM_0, cmd, g_mfrc._i2cIoTimeoutTicks); // Sending the command
+    err = i2c_master_cmd_begin(g_mfrc._i2cPort, cmd, g_mfrc._i2cIoTimeoutTicks); // Sending the command
     i2c_cmd_link_delete(cmd);
-    if (err != ESP_OK)
-        return 0;
+	if (err != ESP_OK) {
+		printf("%s: MFRC i2c err(2): %s\n", __FUNCTION__, esp_err_to_name(err));
+		return 0;
+	}
 
     return value;
 } // End PCD_ReadRegister()
@@ -234,10 +253,12 @@ void PCD_ReadRegisterData(  uint8_t reg,		///< The register to read from. One of
     // Send the register address
     i2c_master_write_byte(cmd, reg, true);
     i2c_master_stop(cmd);
-    esp_err_t err = i2c_master_cmd_begin(I2C_NUM_0, cmd, g_mfrc._i2cIoTimeoutTicks); // Execute the commands
+    esp_err_t err = i2c_master_cmd_begin(g_mfrc._i2cPort, cmd, g_mfrc._i2cIoTimeoutTicks); // Execute the commands
     i2c_cmd_link_delete(cmd); // Clean up
-    if (err != ESP_OK)
-        return;
+    if (err != ESP_OK) {
+    	printf("%s: MFRC i2c err(1): %s\n", __FUNCTION__, esp_err_to_name(err));
+	    return;
+    }
 
     // Now read from the register
     address = (g_mfrc._chipAddress << 1) | I2C_MASTER_READ; // Switch to read mode
@@ -252,10 +273,12 @@ void PCD_ReadRegisterData(  uint8_t reg,		///< The register to read from. One of
     i2c_master_read_byte(cmd, values + count - 1, I2C_MASTER_NACK); // NACK the last byte
 
     i2c_master_stop(cmd);
-    err = i2c_master_cmd_begin(I2C_NUM_0, cmd, g_mfrc._i2cIoTimeoutTicks); // Execute the commands
+    err = i2c_master_cmd_begin(g_mfrc._i2cPort, cmd, g_mfrc._i2cIoTimeoutTicks); // Execute the commands
     i2c_cmd_link_delete(cmd); // Clean up
-    if (err != ESP_OK)
-        return;
+	if (err != ESP_OK) {
+		printf("%s: MFRC i2c err(2): %s\n", __FUNCTION__, esp_err_to_name(err));
+		return;
+	}
 
     // If rxAlign is used, adjust the first byte
     if (rxAlign != 0) {
