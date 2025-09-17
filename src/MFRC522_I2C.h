@@ -79,6 +79,8 @@
 #define MFRC522_h
 
 // #include <cstdint>
+#include <driver/gpio.h>
+#include <driver/i2c_master.h>
 
 #define MFRC_INCLUDE_SELFTEST 0
 
@@ -320,7 +322,7 @@ typedef struct {
 // initialize MFRC hardware
 // chipAddress: i2c address of MFRC chip
 // resetPowerDownPin: if -1, ignored. otherwise, the number of a GPIO pin to hold to powerup/reset the MFRC chip
-bool MFRC522_Init(uint8_t chipAddress, int resetPowerDownPin);
+bool MFRC522_Init(i2c_master_dev_handle_t dev_handle, int resetPowerDownPin);
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Basic interface functions for communicating with the MFRC522
