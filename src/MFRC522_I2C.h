@@ -327,25 +327,24 @@ bool MFRC522_Init(i2c_master_dev_handle_t dev_handle, int resetPowerDownPin);
 /////////////////////////////////////////////////////////////////////////////////////
 // Basic interface functions for communicating with the MFRC522
 /////////////////////////////////////////////////////////////////////////////////////
-void PCD_WriteRegister(uint8_t reg, uint8_t value);
-void PCD_WriteRegisterData(uint8_t reg, uint8_t count, uint8_t *values);
-uint8_t PCD_ReadRegister(uint8_t reg);
-void PCD_ReadRegisterData(uint8_t reg, uint8_t count, uint8_t *values, uint8_t rxAlign); // default rxAlign=0
-// TODO? void setBitMask(unsigned char reg, unsigned char mask);
-void PCD_SetRegisterBitMask(uint8_t reg, uint8_t mask);
-void PCD_ClearRegisterBitMask(uint8_t reg, uint8_t mask);
-uint8_t PCD_CalculateCRC(uint8_t *data, uint8_t length, uint8_t *result);
+esp_err_t PCD_WriteRegister(uint8_t reg, uint8_t value);
+esp_err_t PCD_WriteRegisterData(uint8_t reg, uint8_t count, const uint8_t* values);
+esp_err_t PCD_ReadRegister(uint8_t reg, uint8_t* val_out);
+esp_err_t PCD_ReadRegisterData(uint8_t reg, uint8_t count, uint8_t *values, uint8_t rxAlign); // default rxAlign=0
+esp_err_t PCD_SetRegisterBitMask(uint8_t reg, uint8_t mask);
+esp_err_t PCD_ClearRegisterBitMask(uint8_t reg, uint8_t mask);
+enum StatusCode PCD_CalculateCRC(const uint8_t *data, uint8_t length, uint8_t *result);
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Functions for manipulating the MFRC522
 /////////////////////////////////////////////////////////////////////////////////////
-void PCD_Init();
-void PCD_Reset();
-void PCD_AntennaOn();
-void PCD_AntennaOff();
-uint8_t PCD_GetAntennaGain();
-void PCD_SetAntennaGain(uint8_t mask);
-void PCD_SetMaxInductance();
+esp_err_t PCD_Init();
+esp_err_t PCD_Reset();
+esp_err_t PCD_AntennaOn();
+esp_err_t PCD_AntennaOff();
+esp_err_t PCD_GetAntennaGain(uint8_t* val_out);
+esp_err_t PCD_SetAntennaGain(uint8_t mask);
+esp_err_t PCD_SetMaxInductance();
 bool PCD_PerformSelfTest();
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -356,7 +355,7 @@ bool PCD_PerformSelfTest();
 // const uint8_t *validBits = NULL;
 // const uint8_t rxAlign = 0;
 // const bool checkCRC = false;
-uint8_t PCD_TransceiveData(uint8_t *sendData, uint8_t sendLen, uint8_t *backData, uint8_t *backLen, uint8_t *validBits, uint8_t rxAlign, bool checkCRC);
+enum StatusCode PCD_TransceiveData(const uint8_t *sendData, uint8_t sendLen, uint8_t *backData, uint8_t *backLen, uint8_t *validBits, uint8_t rxAlign, bool checkCRC);
 
 // defaults for optional params:
 //const uint8_t *backData = NULL;
@@ -364,51 +363,51 @@ uint8_t PCD_TransceiveData(uint8_t *sendData, uint8_t sendLen, uint8_t *backData
 //const uint8_t *validBits = NULL;
 //const uint8_t rxAlign = 0;
 //const bool checkCRC = false;
-uint8_t PCD_CommunicateWithPICC(uint8_t command, uint8_t waitIRq, uint8_t *sendData, uint8_t sendLen, uint8_t *backData, uint8_t *backLen, uint8_t *validBits, uint8_t rxAlign,bool checkCRC);
+enum StatusCode PCD_CommunicateWithPICC(uint8_t command, uint8_t waitIRq, const uint8_t *sendData, uint8_t sendLen, uint8_t *backData, uint8_t *backLen, uint8_t *validBits, uint8_t rxAlign,bool checkCRC);
 
-uint8_t PICC_RequestA(uint8_t *bufferATQA, uint8_t *bufferSize);
-uint8_t PICC_WakeupA(uint8_t *bufferATQA, uint8_t *bufferSize);
-uint8_t PICC_REQA_or_WUPA(uint8_t command, uint8_t *bufferATQA, uint8_t *bufferSize);
-uint8_t PICC_Select(Uid *uid, uint8_t validBits); // defaults: validbits=0
-uint8_t PICC_HaltA();
+enum StatusCode  PICC_RequestA(uint8_t *bufferATQA, uint8_t *bufferSize);
+enum StatusCode  PICC_WakeupA(uint8_t *bufferATQA, uint8_t *bufferSize);
+enum StatusCode  PICC_REQA_or_WUPA(uint8_t command, uint8_t *bufferATQA, uint8_t *bufferSize);
+enum StatusCode  PICC_Select(Uid *uid, uint8_t validBits); // defaults: validbits=0
+enum StatusCode  PICC_HaltA();
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Functions for communicating with MIFARE PICCs
 /////////////////////////////////////////////////////////////////////////////////////
-uint8_t PCD_Authenticate(uint8_t command, uint8_t blockAddr, MIFARE_Key *key, Uid *uid);
-void PCD_StopCrypto1();
-uint8_t MIFARE_Read(uint8_t blockAddr, uint8_t *buffer, uint8_t *bufferSize);
-uint8_t MIFARE_Write(uint8_t blockAddr, uint8_t *buffer, uint8_t bufferSize);
-uint8_t MIFARE_Decrement(uint8_t blockAddr, long delta);
-uint8_t MIFARE_Increment(uint8_t blockAddr, long delta);
-uint8_t MIFARE_Restore(uint8_t blockAddr);
-uint8_t MIFARE_Transfer(uint8_t blockAddr);
-uint8_t MIFARE_Ultralight_Write(uint8_t page, uint8_t *buffer, uint8_t bufferSize);
-uint8_t MIFARE_GetValue(uint8_t blockAddr, long *value);
-uint8_t MIFARE_SetValue(uint8_t blockAddr, long value);
+enum StatusCode PCD_Authenticate(uint8_t command, uint8_t blockAddr, const MIFARE_Key *key, const Uid *uid);
+esp_err_t PCD_StopCrypto1();
+enum StatusCode MIFARE_Read(uint8_t blockAddr, uint8_t *buffer, uint8_t *bufferSize);
+enum StatusCode MIFARE_Write(uint8_t blockAddr, const uint8_t *buffer, uint8_t bufferSize);
+enum StatusCode MIFARE_Decrement(uint8_t blockAddr, long delta);
+enum StatusCode MIFARE_Increment(uint8_t blockAddr, long delta);
+enum StatusCode MIFARE_Restore(uint8_t blockAddr);
+enum StatusCode MIFARE_Transfer(uint8_t blockAddr);
+enum StatusCode MIFARE_Ultralight_Write(uint8_t page, const uint8_t *buffer, uint8_t bufferSize);
+enum StatusCode MIFARE_GetValue(uint8_t blockAddr, long *value);
+enum StatusCode MIFARE_SetValue(uint8_t blockAddr, long value);
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Support functions
 /////////////////////////////////////////////////////////////////////////////////////
-uint8_t PCD_MIFARE_Transceive(uint8_t *sendData, uint8_t sendLen, bool acceptTimeout); // acceptTimeout default=false
+enum StatusCode PCD_MIFARE_Transceive(const uint8_t *sendData, uint8_t sendLenIn, bool acceptTimeout); // acceptTimeout default=false
 // old function used too much memory, now name moved to flash; if you need char, copy from flash to memory
 //const char *GetStatusCodeName(byte code);
 const char *GetStatusCodeName(uint8_t code);
-uint8_t PICC_GetType(uint8_t sak);
+enum PICC_Type PICC_GetType(uint8_t sak);
 // old function used too much memory, now name moved to flash; if you need char, copy from flash to memory
 //const char *PICC_GetTypeName(byte type);
 const char *PICC_GetTypeName(uint8_t type);
 
 // Support functions for debugging
 void PCD_DumpVersionToSerial();
-uint8_t PCD_GetVersion();
-void PICC_DumpToSerial(Uid *uid);
-void PICC_DumpMifareClassicToSerial(Uid *uid, uint8_t piccType, MIFARE_Key *key);
-void PICC_DumpMifareClassicSectorToSerial(Uid *uid, MIFARE_Key *key, uint8_t sector);
+esp_err_t PCD_GetVersion();
+void PICC_DumpToSerial(const Uid *uid);
+void PICC_DumpMifareClassicToSerial(const Uid *uid, uint8_t piccType, const MIFARE_Key *key);
+void PICC_DumpMifareClassicSectorToSerial(const Uid *uid, const MIFARE_Key *key, uint8_t sector);
 void PICC_DumpMifareUltralightToSerial();
 void MIFARE_SetAccessBits(uint8_t *accessBitBuffer, uint8_t g0, uint8_t g1, uint8_t g2, uint8_t g3);
 bool MIFARE_OpenUidBackdoor(bool logErrors);
-bool MIFARE_SetUid(uint8_t *newUid, uint8_t uidSize, bool logErrors);
+bool MIFARE_SetUid(const uint8_t *newUid, uint8_t uidSize, bool logErrors);
 bool MIFARE_UnbrickUidSector(bool logErrors);
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -417,6 +416,6 @@ bool MIFARE_UnbrickUidSector(bool logErrors);
 bool PICC_IsNewCardPresent();
 bool PICC_ReadCardSerial(Uid* uid);
 
-uint8_t MIFARE_TwoStepHelper(uint8_t command, uint8_t blockAddr, long data);
+enum StatusCode MIFARE_TwoStepHelper(uint8_t command, uint8_t blockAddr, long data);
 
 #endif // MFRC522_h
