@@ -1925,7 +1925,7 @@ bool MIFARE_SetUid(const uint8_t *newUid, const uint8_t uidSize, const bool logE
 //			  PICC_WakeupA(atqa_answer, &atqa_size);
 
 			if (!PICC_IsNewCardPresent() || !PICC_ReadCardSerial(&original_id)) {
-                serial_println("No card was previously selected, and none are available. Failed to set UID.");
+                serial_println("No card prev selected & none available. set UID fail.");
 				return false;
 			}
 
@@ -1933,7 +1933,7 @@ bool MIFARE_SetUid(const uint8_t *newUid, const uint8_t uidSize, const bool logE
 			if (status != STATUS_OK) {
 				// We tried, time to give up
 				if (logErrors) {
-                    serial_println("Failed to authenticate to card for reading, could not set UID: ");
+                    serial_println("Failed to auth to card for reading, couldn't set UID: ");
 					serial_println(GetStatusCodeName(status));
 				}
 				return false;
